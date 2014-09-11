@@ -9,130 +9,213 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-using SpectatorClient.Packets;
+using SpectatorClient.SpectatorService;
 using SpectatorClient.Game;
+using SpectatorClient.Riot;
+using SpectatorClient.Packets;
 
 namespace SpectatorClient
 {
     public partial class Minimap : Form
     {
-        List<Packet> packets = new List<Packet>();
+        String GameId;
+        String Platform;
+        FileSystemWatcher watcher = new FileSystemWatcher();
+        List<Int32> decodedChunkIds = new List<Int32>();
+        List<Int32> decodedKeyFrameIds = new List<Int32>();
+        List<Packet> chunkPackets = new List<Packet>();
+        List<Packet> keyFramePackets = new List<Packet>();
         List<PictureBox> champIcons = new List<PictureBox>();
-        List<PictureBox> itemIcons = new List<PictureBox>();
-        List<Player> players = new List<Player>();
-        Dictionary<UInt32, byte[]> itemImages = new Dictionary<UInt32, byte[]>();
-        public Minimap()
+        List<PlayerInfo> players = new List<PlayerInfo>();
+        Boolean PlayersUpdated = false;
+        public Minimap(String GameId, String Platform)
         {
+            this.Platform = Platform;
+            this.GameId = GameId;
             InitializeComponent();
         }
-
         private void Minimap_Load(object sender, EventArgs e)
         {
-            //ChunkDownloader.DownloadFeaturedGamesChunks();
-            new System.Threading.Thread(delegate()
-            {
-                while (true)
-                {
-                    Console.WriteLine("dl");
-
-                    ChunkDownloader.DownloadGameChunks("1516118667", "NA1", "ZTml5KZFHohhn/PW8mY5wqTOmKG1m9HL");
-                    System.Threading.Thread.Sleep(10000);
-                }
-            });//.Start();
-            trackbarNoFocus1.Visible = false;
-            List<String> games = Directory.GetDirectories(".", "*").ToList();
-            foreach (String game in games)
-            {
-                if (!game.Contains("8667"))
-                    continue;
-                packets = ChunkDecoder.DecodeGameChunks(game);
-                //foreach (Packet packet in packets)
-                {
-                    //Console.WriteLine(packet.param.ToString("X") + " : " + BitConverter.ToString(packet.content) + " @ " + packet.time);
-                }
-            }
-            InitGame();
+            this.Text = GameId.ToString();
+            Init();
+            DecodeExistingKeyFrames();
+            DecodeExistingChunks();
+            KeyFrameStreamer();
+            ChunkStreamer();
             trackbarNoFocus1.Visible = true;
         }
-        private void InitGame()
+        private void DecodeExistingChunks()
         {
-            foreach (Packet packet in packets)
+            Thread decode = new Thread(() =>
             {
-                if (packet.header == (Byte)HeaderList.HeroSpawn)
+                if (Directory.Exists(GameId + @"\Chunk"))
                 {
-                    HeroSpawn hero = new HeroSpawn(packet);
-                    if (players.Count(player => player.NetId == hero.NetId) == 0)
+                    foreach (String chunk in Directory.GetFiles(GameId + @"\Chunk"))
                     {
-                        players.Add(new Player(hero.NetId, hero.PlayerName, hero.ChampionName, hero.PlayerNumber));
+                        Int32 chunkId = Int32.Parse(chunk.Substring(chunk.IndexOf("Chunk") + 6));
+                        if (!decodedChunkIds.Contains(chunkId))
+                        {
+                            decodedChunkIds.Add(chunkId);
+                            lock (chunkPackets)
+                            {
+                                chunkPackets.AddRange(SpectatorDecoder.DecodeGameChunk(GameId, chunkId));
+                                chunkPackets.Sort((a, b) => a.time.CompareTo(b.time));
+                            }
+                            UpdatePlayerInfo();
+                        }
                     }
                 }
-                if (packet.header == (Byte)HeaderList.PurchaseItem && packet.time > 1)
-                {
-                    PurchaseItem item = new PurchaseItem(packet);
-                    WebClient client = new WebClient();
-                    if (!itemImages.ContainsKey(item.ItemId))
-                        itemImages.Add(item.ItemId, client.DownloadData("http://ddragon.leagueoflegends.com/cdn/4.15.1/img/item/" + item.ItemId + ".png"));
-                }
-            }
-            List<Label> labels = new List<Label>();
-            labels.Add(label2); labels.Add(label3); labels.Add(label4); labels.Add(label5); labels.Add(label6);
-            labels.Add(label7); labels.Add(label8); labels.Add(label9); labels.Add(label10); labels.Add(label11);
-            int p = 0;
-            foreach (Player player in players)
+            });
+            decode.IsBackground = true;
+            decode.Start();
+        }
+        private void DecodeExistingKeyFrames()
+        {
+            Thread decode = new Thread(() =>
             {
-                labels[(int)player.Num].Text = player.Name + " : " + player.Champ;
+                if (Directory.Exists(GameId + @"\KeyFrame"))
+                foreach (String keyFrame in Directory.GetFiles(GameId + @"\KeyFrame"))
+                {
+                    Int32 id = Int32.Parse(keyFrame.Substring(keyFrame.IndexOf("KeyFrame") + 9));
+                    if (!decodedKeyFrameIds.Contains(id))
+                    {
+                        decodedKeyFrameIds.Add(id);
+                        lock (keyFramePackets)
+                        {
+                            keyFramePackets.AddRange(SpectatorDecoder.DecodeGameKeyFrame(GameId, id));
+                            keyFramePackets.Sort((a, b) => a.time.CompareTo(b.time));
+                        }
+                        foreach (Packet packet in keyFramePackets)
+                        {
+                            Console.WriteLine(packet.header + " (" + packet.param + ") : " + BitConverter.ToString(packet.content));
+                        }
+                        UpdatePlayerInfo();
+                    }
+                }
+            });
+            decode.IsBackground = true;
+            decode.Start();
+        }
+        private void ChunkStreamer()
+        {
+            if (!Directory.Exists(GameId))
+                Directory.CreateDirectory(GameId);
+            if (!Directory.Exists(GameId + @"\Chunk"))
+                Directory.CreateDirectory(GameId + @"\Chunk");
+            watcher.Path = GameId + @"\Chunk";
+            watcher.NotifyFilter = NotifyFilters.LastWrite;
+            watcher.Filter = "*";
+            watcher.Changed += new FileSystemEventHandler(OnChunkCreated);
+            watcher.EnableRaisingEvents = true;
+        }
+        private void KeyFrameStreamer()
+        {
+            if (!Directory.Exists(GameId))
+                Directory.CreateDirectory(GameId);
+            if (!Directory.Exists(GameId + @"\KeyFrame"))
+                Directory.CreateDirectory(GameId + @"\KeyFrame");
+            watcher.Path = GameId + @"\KeyFrame";
+            watcher.NotifyFilter = NotifyFilters.LastWrite;
+            watcher.Filter = "*";
+            watcher.Changed += new FileSystemEventHandler(OnKeyFrameCreated);
+            watcher.EnableRaisingEvents = true;
+        }
+        private void OnKeyFrameCreated(object source, FileSystemEventArgs e)
+        {
+            if (!decodedKeyFrameIds.Contains(Int32.Parse(e.Name)))
+            {
+                decodedKeyFrameIds.Add(Int32.Parse(e.Name));
+                lock (keyFramePackets)
+                {
+                    keyFramePackets.AddRange(SpectatorDecoder.DecodeGameChunk(GameId, Int32.Parse(e.Name)));
+                    keyFramePackets.Sort((a, b) => a.time.CompareTo(b.time));
+                }
+                UpdatePlayerInfo();
+            }
+        }
+        private void OnChunkCreated(object source, FileSystemEventArgs e)
+        {
+            Int32 chunkId = Int32.Parse(e.Name);
+            if (!decodedChunkIds.Contains(chunkId))
+            {
+                decodedChunkIds.Add(chunkId);
+                lock (chunkPackets)
+                {
+                    chunkPackets.AddRange(SpectatorDecoder.DecodeGameChunk(GameId, chunkId));
+                    chunkPackets.Sort((a, b) => a.time.CompareTo(b.time));
+                }
+                UpdatePlayerInfo();
+            }
+        }
+        private void Init()
+        {
+            Thread updateStartTime = new Thread(() =>
+            {
+                this.Invoke((MethodInvoker)(() =>
+                {
+                    this.Text = GameId.ToString() + " : " + ((Dictionary<Object, Object>)
+                            SpectatorService.SpectatorDownloader.DownloadMetaData(Platform, GameId))["startTime"];
+                }));
+            });
+            updateStartTime.IsBackground = false;
+            updateStartTime.Start();
+            for (int i = 0; i < 10; i++)
+            {
                 PictureBox champIcon = new PictureBox();
-
-                WebClient Client = new WebClient();
-                byte[] imageData = Client.DownloadData("http://ddragon.leagueoflegends.com/cdn/4.15.1/img/champion/" + player.Champ + ".png");
-                MemoryStream stream = new MemoryStream(imageData);
-                champIcon.Image = Image.FromStream(stream);
-                stream.Close();
-
                 champIcon.SizeMode = PictureBoxSizeMode.StretchImage;
                 champIcon.Size = new Size(20, 20);
                 champIcons.Add(champIcon);
                 pictureBox1.Controls.Add(champIcon);
-                int q = 0;
-                foreach (Item item in player.Items)
+                PlayerInfo playerInfo = new PlayerInfo();
+                playerInfo.Location = new Point(pictureBox1.Location.X + pictureBox1.Size.Width + 20, pictureBox1.Location.Y + i * 36);
+                this.Controls.Add(playerInfo);
+                players.Add(playerInfo);
+            }
+        }
+        void UpdatePlayerInfo()
+        {
+            if (!PlayersUpdated)
+            {
+                lock (chunkPackets)
                 {
-                    PictureBox itemIcon = new PictureBox();
-                    itemIcon.SizeMode = PictureBoxSizeMode.StretchImage;
-                    itemIcon.Size = new Size(20, 20);
-                    itemIcon.Location = new Point(labels[p].Location.X + (q * 25) + 150, labels[p].Location.Y);
-                    q++;
-                    itemIcons.Add(itemIcon);
-                    this.Controls.Add(itemIcon);
+                    foreach (Packet packet in chunkPackets.Where(packet => packet.header == (Byte)HeaderList.HeroSpawn))
+                    {
+                        HeroSpawn hero = new HeroSpawn(packet);
+                        players[(Int32)hero.PlayerNumber].player.Update(hero.NetId, hero.PlayerName, hero.ChampionName, hero.PlayerNumber);
+                        players[(Int32)hero.PlayerNumber].summonerName.Invoke((MethodInvoker)(() =>
+                        {
+                            champIcons[(Int32)hero.PlayerNumber].Image = players[(Int32)hero.PlayerNumber].champIcon.Image = DataDragon.GetChampImage(hero.ChampionName);
+                            players[(Int32)hero.PlayerNumber].summonerName.Text = hero.PlayerName;
+                        }));
+                        PlayersUpdated = true;
+                    }
                 }
-                p++;
             }
         }
         private void SetPositions(Single time)
         {
-            label1.Text = time + " / " + packets[packets.Count() - 1].time;
-            int i = 0;
-            for (i = 0; i < packets.Count(); i++)
-            {
-                if (packets[i].time > time)
-                    break;
-            }
-            i--;
+            Int32 packetNum = chunkPackets.FindIndex(packet => packet.time > time) - 1;
+            if (packetNum < 1)
+                return;
             Dictionary<int, Vector> playerPositions = new Dictionary<int, Vector>();
-            for (; i > 0; i--)
+            for (int i = packetNum; i > 0; i--)
             {
-                if (packets[i].header == (Byte)HeaderList.Waypoints)
+                if (chunkPackets[i].header == (Byte)HeaderList.Waypoints)
                 {
-                    Waypoints wp = new Waypoints(packets[i]);
+                    Waypoints wp = new Waypoints(chunkPackets[i]);
                     foreach (Unit unit in wp.units)
                     {
-                        if ((unit.netId - 0x40000019) < 10)
+                        PlayerInfo playerInfo = players.Find(pInfo => pInfo.player.NetId == unit.netId);
+                        if (playerInfo != null)
                         {
-                            if (!playerPositions.ContainsKey((int)(unit.netId - 0x40000019)))
+                            Int32 playerNum = (Int32)playerInfo.player.Num;
+                            if (!playerPositions.ContainsKey(playerNum))
                             {
-                                playerPositions.Add((int)(unit.netId - 0x40000019), unit.destCoords[0]);
+                                playerPositions.Add(playerNum, unit.destCoords[0]);
                             }
                         }
                     }
@@ -149,15 +232,10 @@ namespace SpectatorClient
         }
         private void UpdateItems(Single time)
         {
-            foreach (Player player in players)
+            players.ForEach(playerInfo => playerInfo.player.Items.ForEach(item => item.ItemId = 0));
+            for (int i = 0; i < chunkPackets.Count; i++)
             {
-                foreach (Item item in player.Items)
-                {
-                    item.ItemId = 0;
-                }
-            }
-            foreach (Packet packet in packets)
-            {
+                Packet packet = chunkPackets[i];
                 if (packet.time < 1)
                     continue;
                 if (packet.time > time)
@@ -165,61 +243,66 @@ namespace SpectatorClient
                 if (packet.header == (Byte)HeaderList.PurchaseItem)
                 {
                     PurchaseItem purchase = new PurchaseItem(packet);
-                    players[players.FindIndex(player => player.NetId == purchase.NetId)].Items[purchase.SlotId] = new Item(purchase);
+                    PlayerInfo playerInfo = players.Find(pInfo => pInfo.player.NetId == purchase.NetId);
+                    if (playerInfo != null)
+                        playerInfo.player.Items[purchase.SlotId] = new Item(purchase);
                 }
                 if (packet.header == (Byte)HeaderList.SellItem)
                 {
                     SellItem sell = new SellItem(packet);
-                    if (sell.NetId >= 0x40000019)
+                    PlayerInfo playerInfo = players.Find(pInfo => pInfo.player.NetId == sell.NetId);
+                    if (playerInfo != null)
                     {
-                        Player tempPlayer = players[players.FindIndex(player => player.NetId == sell.NetId)];
-                        tempPlayer.Items[(sell.Slot & 0x7F)].ItemId = 0;
-                        tempPlayer.Items[(sell.Slot & 0x7F)].ItemCount = 0;
-                        players[players.FindIndex(player => player.NetId == sell.NetId)] = tempPlayer;
+                        playerInfo.player.Items[(sell.Slot & 0x7F)].ItemId = 0;
+                        playerInfo.player.Items[(sell.Slot & 0x7F)].ItemCount = 0;
                     }
+
                 }
                 if (packet.header == (Byte)HeaderList.SwapItems)
                 {
                     SwapItems swap = new SwapItems(packet);
-                    Player tempPlayer = players[players.FindIndex(player => player.NetId == swap.NetId)];
-                    Item item1 = tempPlayer.Items[swap.Slot1];
-                    Item item2 = tempPlayer.Items[swap.Slot2];
-                    tempPlayer.Items[swap.Slot1] = item2;
-                    tempPlayer.Items[swap.Slot2] = item1;
-                    players[players.FindIndex(player => player.NetId == swap.NetId)] = tempPlayer;
+                    PlayerInfo playerInfo = players.Find(player => player.player.NetId == swap.NetId);
+                    if (playerInfo != null)
+                    {
+                        Item item1 = playerInfo.player.Items[swap.Slot1];
+                        playerInfo.player.Items[swap.Slot1] = playerInfo.player.Items[swap.Slot2];
+                        playerInfo.player.Items[swap.Slot2] = item1;
+                    }
                 }
             }
-            int p = 0;
-            foreach (Player player in players)
+            foreach (PlayerInfo playerInfo in players)
             {
-                int q = 0;
-                foreach (Item item in player.Items)
+                for (int i = 0; i < playerInfo.player.Items.Count; i++)
                 {
-                    PictureBox icon = itemIcons[7 * p + q];
-                    if (item.ItemId > 100)
-                    {
-                        //WebClient Client = new WebClient();
-                        byte[] imageData = itemImages[item.ItemId];// Client.DownloadData("http://ddragon.leagueoflegends.com/cdn/4.15.1/img/item/" + item.ItemId + ".png");
-                        MemoryStream stream = new MemoryStream(imageData);
-                        icon.Image = Image.FromStream(stream);
-                        stream.Close();
-                    }
+                    if (playerInfo.player.Items[i].ItemId > 0)
+                        playerInfo.items[i].Image = Riot.DataDragon.GetItemImage(playerInfo.player.Items[i].ItemId.ToString());
                     else
-                    {
-                        icon.Image = null;
-                    }
-                    itemIcons[7 * p + q] = icon;
-                    q++;
+                        playerInfo.items[i].Image = null;
                 }
-                p++;
             }
         }
         private void trackbarNoFocus1_Scroll(object sender, EventArgs e)
         {
-            Single time = packets[packets.Count() - 1].time * trackbarNoFocus1.Value / 100;
-            SetPositions(time);
-            UpdateItems(time);
+            lock (chunkPackets)
+            {
+                if (chunkPackets.Count > 0)
+                {
+                    Single beginTime = chunkPackets[0].time;
+                    trackbarNoFocus1.Minimum = (Int32)chunkPackets[0].time;
+                    trackbarNoFocus1.Maximum = (Int32)chunkPackets[chunkPackets.Count() - 1].time;
+                    label1.Text = trackbarNoFocus1.Minimum + " / " + trackbarNoFocus1.Value + " / " + trackbarNoFocus1.Maximum;
+                    Thread ParsePackets = new Thread(() =>
+                    {
+                        trackbarNoFocus1.Invoke((MethodInvoker)(() =>
+                        {
+                            SetPositions(trackbarNoFocus1.Value);
+                            UpdateItems(trackbarNoFocus1.Value);
+                        }));
+                    });
+                    ParsePackets.IsBackground = true;
+                    ParsePackets.Start();
+                }
+            }
         }
-
     }
 }

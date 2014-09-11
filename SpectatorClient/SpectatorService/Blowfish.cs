@@ -55,7 +55,7 @@ using System;
 using System.Text;
 using System.Security.Cryptography;
 
-namespace SpectatorClient
+namespace SpectatorClient.SpectatorService
 {
     class Blowfish
     {

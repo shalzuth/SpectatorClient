@@ -16,7 +16,7 @@ namespace SpectatorClient
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Minimap());
+            Application.Run(new MainWindow());
         }
     }
 }

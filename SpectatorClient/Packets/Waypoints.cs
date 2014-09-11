@@ -71,6 +71,8 @@ namespace SpectatorClient.Packets
                         lastCoord.y += content[maskOffset + nPos++];
                     else
                     {
+                        if (maskOffset + nPos + 1 > content.Length)
+                            return;
                         Int16 upper = (Int16)((Int16)content[maskOffset + nPos + 1] << (Int16)8);
                         Byte lower = content[maskOffset + nPos];
                         lastCoord.y = (short)(upper | (Int16)lower);

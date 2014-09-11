@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace SpectatorClient.Packets
 {
-    class PurchaseItem : Packet
+    public class PurchaseItem : Packet
     {
         public UInt32 NetId { get { return param; } }
         public UInt32 ItemId { get { return BitConverter.ToUInt32(content, 0); } }

@@ -45,9 +45,136 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Blowfish.cs" />
-    <Compile Include="ChunkDecoder.cs" />
-    <Compile Include="ChunkDownloader.cs" />
+    <Compile Include="Login\Assets\AsyncHelpers.cs" />
+    <Compile Include="Login\Assets\StringEnums.cs" />
+    <Compile Include="Login\LoginClient.cs" />
+    <Compile Include="Login\RiotObjects\Kudos\Dto\PendingKudosDTO.cs" />
+    <Compile Include="Login\RiotObjects\Leagues\Pojo\LeagueItemDTO.cs" />
+    <Compile Include="Login\RiotObjects\Leagues\Pojo\LeagueListDTO.cs" />
+    <Compile Include="Login\RiotObjects\Leagues\Pojo\MiniSeriesDTO.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Account\AccountSummary.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Broadcast\BroadcastNotification.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Catalog\Champion\ChampionDTO.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Catalog\Champion\ChampionSkinDTO.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Catalog\Effect.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Catalog\ItemEffect.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Catalog\Runes\Rune.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Catalog\Runes\RuneType.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Clientfacade\Domain\LoginDataPacket.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Gameinvite\Contract\LobbyStatus.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Game\BannedChampion.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Game\BotParticipant.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Game\ChampionBanInfoDTO.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Game\GameDTO.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Game\GameObserver.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Game\GameTypeConfigDTO.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Game\Map\GameMap.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Game\Message\GameNotification.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Game\ObfruscatedParticipant.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Game\Participant.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Game\PlatformGameLifecycleDTO.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Game\PlayerChampionSelectionDTO.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Game\PlayerCredentialsDto.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Game\PlayerParticipant.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Game\PracticeGameConfig.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Game\Practice\PracticeGameSearchResult.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Game\StartChampSelectDTO.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Harassment\LcdsResponseString.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Leagues\Client\Dto\SummonerLeagueItemsDTO.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Leagues\Client\Dto\SummonerLeaguesDTO.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Login\AuthenticationCredentials.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Login\Session.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Matchmaking\GameQueueConfig.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Matchmaking\MatchingThrottleConfig.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Matchmaking\MatchMakerParams.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Matchmaking\QueueDodger.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Matchmaking\QueueInfo.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Matchmaking\SearchingForMatchNotification.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Messaging\StoreAccountBalanceNotification.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Messaging\StoreFulfillmentNotification.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Reroll\Pojo\AramPlayerParticipant.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Reroll\Pojo\EogPointChangeBreakdown.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Reroll\Pojo\PointSummary.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Statistics\AggregatedStat.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Statistics\AggregatedStats.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Statistics\AggregatedStatsKey.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Statistics\ChampionStatInfo.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Statistics\EndOfGameStats.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Statistics\FellowPlayerInfo.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Statistics\LeaverPenaltyStats.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Statistics\PlayerGameStats.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Statistics\PlayerLifetimeStats.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Statistics\PlayerParticipantStatsSummary.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Statistics\PlayerStats.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Statistics\PlayerStatSummaries.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Statistics\PlayerStatSummary.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Statistics\RawStat.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Statistics\RawStatDTO.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Statistics\RecentGames.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Statistics\SummaryAggStat.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Statistics\SummaryAggStats.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Statistics\Team\TeamAggregatedStatsDTO.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Statistics\Team\TeamPlayerAggregatedStatsDTO.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Statistics\TimeTrackedStat.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Summoner\AllPublicSummonerDataDTO.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Summoner\AllSummonerData.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Summoner\BasePublicSummonerDTO.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Summoner\Boost\SummonerActiveBoostsDTO.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Summoner\Masterybook\MasteryBookDTO.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Summoner\Masterybook\MasteryBookPageDTO.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Summoner\Masterybook\TalentEntry.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Summoner\PublicSummoner.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Summoner\RuneSlot.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Summoner\Runes\SummonerRune.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Summoner\Runes\SummonerRuneInventory.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Summoner\Spellbook\SlotEntry.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Summoner\Spellbook\SpellBookDTO.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Summoner\Spellbook\SpellBookPageDTO.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Summoner\Summoner.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Summoner\SummonerCatalog.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Summoner\SummonerDefaultSpells.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Summoner\SummonerLevel.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Summoner\SummonerLevelAndPoints.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Summoner\SummonerTalentsAndPoints.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Summoner\Talent.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Summoner\TalentGroup.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Summoner\TalentRow.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Systemstate\ClientSystemStatesNotification.cs" />
+    <Compile Include="Login\RiotObjects\RiotGamesObject.cs" />
+    <Compile Include="Login\RiotObjects\Team\CreatedTeam.cs" />
+    <Compile Include="Login\RiotObjects\Team\Dto\PlayerDTO.cs" />
+    <Compile Include="Login\RiotObjects\Team\Dto\RosterDTO.cs" />
+    <Compile Include="Login\RiotObjects\Team\Dto\TeamDTO.cs" />
+    <Compile Include="Login\RiotObjects\Team\Dto\TeamMemberInfoDTO.cs" />
+    <Compile Include="Login\RiotObjects\Team\Stats\MatchHistorySummary.cs" />
+    <Compile Include="Login\RiotObjects\Team\Stats\TeamStatDetail.cs" />
+    <Compile Include="Login\RiotObjects\Team\Stats\TeamStatSummary.cs" />
+    <Compile Include="Login\RiotObjects\Team\TeamId.cs" />
+    <Compile Include="Login\RiotObjects\Team\TeamInfo.cs" />
+    <Compile Include="Login\RTMP\ClassDefinition.cs" />
+    <Compile Include="Login\RTMP\Error.cs" />
+    <Compile Include="Login\RTMP\LoLConnection.cs" />
+    <Compile Include="Login\RTMP\Packet.cs" />
+    <Compile Include="Login\RTMP\PublicMethods.cs" />
+    <Compile Include="Login\RTMP\Region.cs" />
+    <Compile Include="Login\RTMP\RTMPSDecoder.cs" />
+    <Compile Include="Login\RTMP\RTMPSEncoder.cs" />
+    <Compile Include="Login\RTMP\TypedObject.cs" />
+    <Compile Include="MainWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="MainWindow.Designer.cs">
+      <DependentUpon>MainWindow.cs</DependentUpon>
+    </Compile>
+    <Compile Include="PlayerInfo.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="PlayerInfo.Designer.cs">
+      <DependentUpon>PlayerInfo.cs</DependentUpon>
+    </Compile>
+    <Compile Include="SpectatorService\Blowfish.cs" />
+    <Compile Include="SpectatorService\SpectatorDecoder.cs" />
+    <Compile Include="SpectatorService\SpectatorDownloader.cs" />
     <Compile Include="Game\Item.cs" />
     <Compile Include="Minimap.cs">
       <SubType>Form</SubType>
@@ -102,12 +229,19 @@
     <Compile Include="Game\Player.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Riot\DataDragon.cs" />
     <Compile Include="TrackBarNoFocus.cs">
       <SubType>Component</SubType>
     </Compile>
+    <EmbeddedResource Include="MainWindow.resx">
+      <DependentUpon>MainWindow.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Minimap.resx">
       <DependentUpon>Minimap.cs</DependentUpon>
       <SubType>Designer</SubType>
+    </EmbeddedResource>
+    <EmbeddedResource Include="PlayerInfo.resx">
+      <DependentUpon>PlayerInfo.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
@@ -131,6 +265,7 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
