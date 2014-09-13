@@ -112,9 +112,29 @@ namespace SpectatorClient
             Thread spectateThread = new Thread(async delegate()
             {
                 Login.RiotObjects.Platform.Game.PlatformGameLifecycleDTO spectateInfo =
-                    await ((Login.LoginClient)sender).connection.RetrieveInProgressSpectatorGameInfo(searchSummoner.Text);
+                    await ((Login.LoLConnection)sender).RetrieveInProgressSpectatorGameInfo(searchSummoner.Text);
                 Console.WriteLine("key:" + spectateInfo.PlayerCredentials.ObserverEncryptionKey);
                 Console.WriteLine("id:" + spectateInfo.Game.PlayerChampionSelections[0].ChampionId);
+                Thread downloadThread = new Thread(()=>
+                {
+                    while (!(Boolean)
+                              ((Dictionary<Object, Object>)
+                              SpectatorService.SpectatorDownloader.DownloadMetaData(
+                                  spectateInfo.Game.Id.ToString(),
+                                  "NA1")
+                              )["gameEnded"])
+                    {
+                        SpectatorService.SpectatorDownloader.DownloadGameFiles(
+                            spectateInfo.Game.Id.ToString(),
+                            "NA1",
+                            spectateInfo.PlayerCredentials.ObserverEncryptionKey);
+                        Thread.Sleep(15000);
+                    }
+                });
+                downloadThread.IsBackground = true;
+                downloadThread.Start();
+                Minimap m = new Minimap(spectateInfo.Game.Id.ToString());
+                m.Show();
             });
             spectateThread.IsBackground = true;
             spectateThread.Start();

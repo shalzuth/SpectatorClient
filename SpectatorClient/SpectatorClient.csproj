@@ -70,7 +70,7 @@
     <Compile Include="Login\RiotObjects\Platform\Game\GameTypeConfigDTO.cs" />
     <Compile Include="Login\RiotObjects\Platform\Game\Map\GameMap.cs" />
     <Compile Include="Login\RiotObjects\Platform\Game\Message\GameNotification.cs" />
-    <Compile Include="Login\RiotObjects\Platform\Game\ObfruscatedParticipant.cs" />
+    <Compile Include="Login\RiotObjects\Platform\Game\ObfuscatedParticipant.cs" />
     <Compile Include="Login\RiotObjects\Platform\Game\Participant.cs" />
     <Compile Include="Login\RiotObjects\Platform\Game\PlatformGameLifecycleDTO.cs" />
     <Compile Include="Login\RiotObjects\Platform\Game\PlayerChampionSelectionDTO.cs" />

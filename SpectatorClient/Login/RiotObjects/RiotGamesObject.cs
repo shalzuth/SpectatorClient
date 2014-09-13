@@ -214,7 +214,7 @@ namespace SpectatorClient.Login.RiotObjects
                                 if (dataAsTo.type == "com.riotgames.platform.game.BotParticipant")
                                     objectList.Add(new Platform.Game.BotParticipant(dataAsTo));
                                 else if (dataAsTo.type == "com.riotgames.platform.game.ObfruscatedParticipant")
-                                    objectList.Add(new Platform.Game.ObfruscatedParticipant(dataAsTo));
+                                    objectList.Add(new Platform.Game.ObfuscatedParticipant(dataAsTo));
                                 else if (dataAsTo.type == "com.riotgames.platform.game.PlayerParticipant")
                                     objectList.Add(new Platform.Game.PlayerParticipant(dataAsTo));
                                 else if (dataAsTo.type == "com.riotgames.platform.reroll.pojo.AramPlayerParticipant")

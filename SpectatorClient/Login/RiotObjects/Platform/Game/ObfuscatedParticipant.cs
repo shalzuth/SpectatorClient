@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace SpectatorClient.Login.RiotObjects.Platform.Game
 {
-    public class ObfruscatedParticipant : Participant
+    public class ObfuscatedParticipant : Participant
     {
         public override string TypeName
         {
@@ -18,21 +18,21 @@ namespace SpectatorClient.Login.RiotObjects.Platform.Game
 
         private string type = "com.riotgames.platform.game.ObfruscatedParticipant";
 
-        public ObfruscatedParticipant()
+        public ObfuscatedParticipant()
         {
         }
 
-        public ObfruscatedParticipant(Callback callback)
+        public ObfuscatedParticipant(Callback callback)
         {
             this.callback = callback;
         }
 
-        public ObfruscatedParticipant(TypedObject result)
+        public ObfuscatedParticipant(TypedObject result)
         {
             base.SetFields(this, result);
         }
 
-        public delegate void Callback(ObfruscatedParticipant result);
+        public delegate void Callback(ObfuscatedParticipant result);
 
         private Callback callback;
 

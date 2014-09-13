@@ -148,7 +148,7 @@ namespace SpectatorClient.Login
                         return;
                     StartHeartbeat();
                 });
-
+                t.IsBackground = true;
                 t.Start();
             }
         }
@@ -622,6 +622,7 @@ namespace SpectatorClient.Login
                     }
                 }
             });
+            heartbeatThread.IsBackground = true;
             heartbeatThread.Start();
         }
         #endregion
