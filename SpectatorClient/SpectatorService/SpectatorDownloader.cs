@@ -5,6 +5,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Web.Script.Serialization;
 
@@ -13,19 +14,33 @@ namespace SpectatorClient.SpectatorService
     static class SpectatorDownloader
     {
         static String specHtml = "http://spectator.na.lol.riotgames.com:80/observer-mode/rest/";
+
+        public static void DownloadAllGameInfo(String gameId, String platformId, String encryptionKey)
+        {
+            while (!(Boolean)((Dictionary<Object, Object>)SpectatorService.SpectatorDownloader.DownloadMetaData(gameId, platformId))["gameEnded"])
+            {
+                SpectatorService.SpectatorDownloader.DownloadGameFiles(gameId, platformId, encryptionKey);
+                Thread.Sleep(15000);
+            }
+        }
+
         public static Object[] GetFeaturedGames()
         {
             return (Object[])new JavaScriptSerializer().Deserialize<Dictionary<Object, Object>>(new WebClient().DownloadString(specHtml + "featured"))["gameList"];
         }
-        public static Dictionary<Object, Object> DownloadMetaData(String platformId, String gameId)
+        public static Dictionary<Object, Object> DownloadMetaData(String gameId, String platformId)
         {
-            return new JavaScriptSerializer().Deserialize<Dictionary<Object, Object>>(new WebClient().DownloadString(specHtml + "consumer/getGameMetaData/" + platformId + "/" + gameId + "/1/token"));
+            String metaData = new WebClient().DownloadString(specHtml + "consumer/getGameMetaData/" + platformId + "/" + gameId + "/1/token");
+            return new JavaScriptSerializer().Deserialize<Dictionary<Object, Object>>(metaData);
         }
-        static Byte[] DownloadFile(String platformId, String gameId, String type, int id)
+        static Byte[] DownloadFile(String gameId, String platformId, String type, int id)
         {
             try
             {
-                return new WebClient().DownloadData(specHtml + "consumer/" + type + "/" + platformId + "/" + gameId + "/" + id + "/token");
+                String prepend = "get";
+                if (type.Equals("Chunk"))
+                    prepend += "GameData";
+                return new WebClient().DownloadData(specHtml + "consumer/" + prepend + type + "/" + platformId + "/" + gameId + "/" + id + "/token");
             }
             catch
             {
@@ -34,11 +49,11 @@ namespace SpectatorClient.SpectatorService
         }
         static Byte[] DownloadChunk(String platformId, String gameId, int chunkId)
         {
-            return DownloadFile(platformId, gameId, "getGameDataChunk", chunkId);
+            return DownloadFile(gameId, platformId, "getGameDataChunk", chunkId);
         }
         static Byte[] DownloadKeyFrame(String platformId, String gameId, int keyFrame)
         {
-            return DownloadFile(platformId, gameId, "getKeyFrame", keyFrame);
+            return DownloadFile(gameId, platformId, "getKeyFrame", keyFrame);
         }
         static Byte[] Decrypt(Byte[] encryptKey, Byte[] data)
         {
@@ -69,10 +84,10 @@ namespace SpectatorClient.SpectatorService
         }
         public static void DownloadGameFiles(String gameId, String platformId, String encryptionKeyString, String type)
         {
-            List<Byte> encryptionKey = Decrypt(Encoding.ASCII.GetBytes(gameId), Convert.FromBase64String(encryptionKeyString)).ToList();
-            encryptionKey.RemoveRange(16, encryptionKey.Count() - 16);
-            Byte[] encryptionKey2 = encryptionKey.ToArray();
-            Dictionary<Object, Object> metadata = DownloadMetaData(platformId, gameId);
+            List<Byte> encryptionKeyByteList = Decrypt(Encoding.ASCII.GetBytes(gameId), Convert.FromBase64String(encryptionKeyString)).ToList();
+            encryptionKeyByteList.RemoveRange(16, encryptionKeyByteList.Count() - 16);
+            Byte[] encryptionKeyBytes = encryptionKeyByteList.ToArray();
+            Dictionary<Object, Object> metadata = DownloadMetaData(gameId, platformId);
             for (int i = 1; i <= (int)metadata["last" + type + "Id"]; i++)
             {
                 if (!Directory.Exists(gameId))
@@ -81,11 +96,11 @@ namespace SpectatorClient.SpectatorService
                     Directory.CreateDirectory(gameId + @"\" + type);
                 if (File.Exists(gameId + @"\" + type + @"\" + i.ToString()))
                     continue;
-                Byte[] encryptedChunk = DownloadChunk(platformId, gameId, i);
-                if (encryptedChunk.Count() > 5)
+                Byte[] encryptedFile = DownloadFile(gameId, platformId, type, i);
+                if (encryptedFile.Count() > 5)
                 {
-                    Byte[] compressedChunk = Decrypt(encryptionKey2, encryptedChunk);
-                    Byte[] chunk = Decompress(compressedChunk);
+                    Byte[] compressedFile = Decrypt(encryptionKeyBytes, encryptedFile);
+                    Byte[] chunk = Decompress(compressedFile);
                     if (!File.Exists(gameId + @"\" + type + @"\" + i.ToString()))
                         File.WriteAllBytes(gameId + @"\" + type + @"\" + i.ToString(), chunk);
                 }
@@ -106,7 +121,7 @@ namespace SpectatorClient.SpectatorService
             {
                 DownloadGameChunks(((int)game["gameId"]).ToString(),
                                    (String)game["platformId"],
-                                   (String)((Dictionary<String, Object>)game["observers"])["encryptionKey"]);
+                                   (String)((Dictionary<String, Object>)game["observers"])["encryptionKeyByteList"]);
             }
         }
     }

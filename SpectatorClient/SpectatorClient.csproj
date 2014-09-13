@@ -166,6 +166,8 @@
     <Compile Include="MainWindow.Designer.cs">
       <DependentUpon>MainWindow.cs</DependentUpon>
     </Compile>
+    <Compile Include="Packets\InventoryUpdate.cs" />
+    <Compile Include="Packets\PlayerStats.cs" />
     <Compile Include="PlayerInfo.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -209,7 +211,7 @@
     <Compile Include="Packets\PingLoad.cs" />
     <Compile Include="Packets\PlayAnimation.cs" />
     <Compile Include="Packets\PlayerInfo.cs" />
-    <Compile Include="Packets\PurchaseItem.cs" />
+    <Compile Include="Packets\BuyItem.cs" />
     <Compile Include="Packets\Teleport.cs" />
     <Compile Include="Packets\SellItem.cs" />
     <Compile Include="Packets\SetTarget.cs" />

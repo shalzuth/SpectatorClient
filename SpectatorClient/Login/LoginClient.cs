@@ -25,6 +25,7 @@ namespace SpectatorClient.Login
         public LoLConnection connection = new LoLConnection();
         public String userName { get; set; }
         public String password { get; set; }
+        public String spectateSummoner { get; set; }
         public String log { get; set; }
         public String status { get; set; }
         public RiotObjects.Platform.Catalog.Champion.ChampionDTO[] availableChampsArray;

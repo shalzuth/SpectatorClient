@@ -24,6 +24,7 @@ namespace SpectatorClient.Packets
         LevelUp = 0x3F,
         AttentionPing = 0x40,
         Emotion = 0x42,
+        PlayerStats = 0x46,
         HeroSpawn = 0x4C,
         Announce = 0x4D, //not called
         SynchVersion = 0x54,
@@ -38,7 +39,7 @@ namespace SpectatorClient.Packets
         LoadScreen = 0x67,
         Chat = 0x68,
         SetTarget = 0x6A,
-        PurchaseItem = 0x6F,
+        BuyItem = 0x6F,
         ZyraPassive = 0x86,
         SpawnParticle = 0x87,
         GameId = 0x92,
@@ -57,6 +58,7 @@ namespace SpectatorClient.Packets
         Teleport = 0xD8,
         Gold = 0xE4,
         JungleCampSpawn = 0xE9,
+        ChangeTarget_InventoryUpdate = 0xFE,
 
         Unk85 = 0x85, //param netid, byte flag; float 24.14; float -1, 10, 90, 120, etc.
         Unk7f = 0x7F, //unit16 num,, net id...??
@@ -108,7 +110,6 @@ namespace SpectatorClient.Packets
         Unk2B = 0x2B, // only happened twice, F0-00
         UnkC9 = 0xC9, // surrender vote maybe?
 
-        ChangeTarget = 0xFE,
     };
     public class Packet
     {

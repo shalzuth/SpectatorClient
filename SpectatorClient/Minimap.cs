@@ -23,18 +23,26 @@ namespace SpectatorClient
     public partial class Minimap : Form
     {
         String GameId;
-        String Platform;
-        FileSystemWatcher watcher = new FileSystemWatcher();
-        List<Int32> decodedChunkIds = new List<Int32>();
-        List<Int32> decodedKeyFrameIds = new List<Int32>();
-        List<Packet> chunkPackets = new List<Packet>();
-        List<Packet> keyFramePackets = new List<Packet>();
+        Dictionary<String, List<Int32>> decodedIds = new Dictionary<String,List<Int32>>()
+        {
+            {"Chunk", new List<Int32>()},
+            {"KeyFrame", new List<Int32>()},
+        };
+        Dictionary<String, FileSystemWatcher> fileWatchers = new Dictionary<String, FileSystemWatcher>()
+        {
+            {"Chunk", new FileSystemWatcher()},
+            {"KeyFrame", new FileSystemWatcher()},
+        };
+        Dictionary<String, List<Packet>> packets = new Dictionary<String, List<Packet>>()
+        {
+            {"Chunk", new List<Packet>()},
+            {"KeyFrame", new List<Packet>()},
+        };
         List<PictureBox> champIcons = new List<PictureBox>();
         List<PlayerInfo> players = new List<PlayerInfo>();
         Boolean PlayersUpdated = false;
-        public Minimap(String GameId, String Platform)
+        public Minimap(String GameId)
         {
-            this.Platform = Platform;
             this.GameId = GameId;
             InitializeComponent();
         }
@@ -42,127 +50,74 @@ namespace SpectatorClient
         {
             this.Text = GameId.ToString();
             Init();
-            DecodeExistingKeyFrames();
-            DecodeExistingChunks();
-            KeyFrameStreamer();
-            ChunkStreamer();
+            Thread decodeThread = new Thread(() =>
+            {
+                DecodeExistingFiles();
+            });
+            decodeThread.IsBackground = true;
+            decodeThread.Start();
+            Streamer();
             trackbarNoFocus1.Visible = true;
         }
-        private void DecodeExistingChunks()
+        private void DecodeById(Int32 id, String type)
         {
-            Thread decode = new Thread(() =>
+            if (!decodedIds[type].Contains(id))
             {
-                if (Directory.Exists(GameId + @"\Chunk"))
+                decodedIds[type].Add(id);
+                lock (packets[type])
                 {
-                    foreach (String chunk in Directory.GetFiles(GameId + @"\Chunk"))
-                    {
-                        Int32 chunkId = Int32.Parse(chunk.Substring(chunk.IndexOf("Chunk") + 6));
-                        if (!decodedChunkIds.Contains(chunkId))
-                        {
-                            decodedChunkIds.Add(chunkId);
-                            lock (chunkPackets)
-                            {
-                                chunkPackets.AddRange(SpectatorDecoder.DecodeGameChunk(GameId, chunkId));
-                                chunkPackets.Sort((a, b) => a.time.CompareTo(b.time));
-                            }
-                            UpdatePlayerInfo();
-                        }
-                    }
+                    packets[type].AddRange(SpectatorDecoder.DecodeFile(GameId, type, id));
+                    packets[type].Sort((a, b) => a.time.CompareTo(b.time));
                 }
-            });
-            decode.IsBackground = true;
-            decode.Start();
+                if (type.Equals("KeyFrame"))
+                    UpdatePlayerInfo();
+            }
         }
-        private void DecodeExistingKeyFrames()
+        private void DecodeExistingFiles()
         {
-            Thread decode = new Thread(() =>
-            {
-                if (Directory.Exists(GameId + @"\KeyFrame"))
-                foreach (String keyFrame in Directory.GetFiles(GameId + @"\KeyFrame"))
-                {
-                    Int32 id = Int32.Parse(keyFrame.Substring(keyFrame.IndexOf("KeyFrame") + 9));
-                    if (!decodedKeyFrameIds.Contains(id))
-                    {
-                        decodedKeyFrameIds.Add(id);
-                        lock (keyFramePackets)
-                        {
-                            keyFramePackets.AddRange(SpectatorDecoder.DecodeGameKeyFrame(GameId, id));
-                            keyFramePackets.Sort((a, b) => a.time.CompareTo(b.time));
-                        }
-                        foreach (Packet packet in keyFramePackets)
-                        {
-                            Console.WriteLine(packet.header + " (" + packet.param + ") : " + BitConverter.ToString(packet.content));
-                        }
-                        UpdatePlayerInfo();
-                    }
-                }
-            });
-            decode.IsBackground = true;
-            decode.Start();
+            DecodeExistingFiles("KeyFrame");
+            DecodeExistingFiles("Chunk");
         }
-        private void ChunkStreamer()
+        private void DecodeExistingFiles(String type)
+        {
+            if (Directory.Exists(GameId + @"\" + type))
+            {
+                foreach (String file in Directory.GetFiles(GameId + @"\" + type))
+                {
+                    Int32 id = Int32.Parse(file.Substring(file.IndexOf(type) + type.Length + 1));
+                    DecodeById(id, type);
+                }
+            }
+        }
+        private void Streamer()
+        {
+            Streamer("KeyFrame");
+            Streamer("Chunk");
+        }
+        private void Streamer(String type)
         {
             if (!Directory.Exists(GameId))
                 Directory.CreateDirectory(GameId);
-            if (!Directory.Exists(GameId + @"\Chunk"))
-                Directory.CreateDirectory(GameId + @"\Chunk");
-            watcher.Path = GameId + @"\Chunk";
-            watcher.NotifyFilter = NotifyFilters.LastWrite;
-            watcher.Filter = "*";
-            watcher.Changed += new FileSystemEventHandler(OnChunkCreated);
-            watcher.EnableRaisingEvents = true;
+            if (!Directory.Exists(GameId + @"\" + type))
+                Directory.CreateDirectory(GameId + @"\" + type);
+            fileWatchers[type].Path = GameId + @"\" + type;
+            fileWatchers[type].NotifyFilter = NotifyFilters.LastWrite;
+            fileWatchers[type].Filter = "*";
+            fileWatchers[type].Changed += new FileSystemEventHandler(OnFileCreated);
+            fileWatchers[type].EnableRaisingEvents = true;
         }
-        private void KeyFrameStreamer()
+        private void OnFileCreated(object source, FileSystemEventArgs e)
         {
-            if (!Directory.Exists(GameId))
-                Directory.CreateDirectory(GameId);
-            if (!Directory.Exists(GameId + @"\KeyFrame"))
-                Directory.CreateDirectory(GameId + @"\KeyFrame");
-            watcher.Path = GameId + @"\KeyFrame";
-            watcher.NotifyFilter = NotifyFilters.LastWrite;
-            watcher.Filter = "*";
-            watcher.Changed += new FileSystemEventHandler(OnKeyFrameCreated);
-            watcher.EnableRaisingEvents = true;
-        }
-        private void OnKeyFrameCreated(object source, FileSystemEventArgs e)
-        {
-            if (!decodedKeyFrameIds.Contains(Int32.Parse(e.Name)))
+            Int32 id = Int32.Parse(e.Name);
+            Thread decodeThread = new Thread(() =>
             {
-                decodedKeyFrameIds.Add(Int32.Parse(e.Name));
-                lock (keyFramePackets)
-                {
-                    keyFramePackets.AddRange(SpectatorDecoder.DecodeGameChunk(GameId, Int32.Parse(e.Name)));
-                    keyFramePackets.Sort((a, b) => a.time.CompareTo(b.time));
-                }
-                UpdatePlayerInfo();
-            }
-        }
-        private void OnChunkCreated(object source, FileSystemEventArgs e)
-        {
-            Int32 chunkId = Int32.Parse(e.Name);
-            if (!decodedChunkIds.Contains(chunkId))
-            {
-                decodedChunkIds.Add(chunkId);
-                lock (chunkPackets)
-                {
-                    chunkPackets.AddRange(SpectatorDecoder.DecodeGameChunk(GameId, chunkId));
-                    chunkPackets.Sort((a, b) => a.time.CompareTo(b.time));
-                }
-                UpdatePlayerInfo();
-            }
+                DecodeById(id, Directory.GetParent(e.FullPath).Name);
+            });
+            decodeThread.IsBackground = true;
+            decodeThread.Start();
         }
         private void Init()
         {
-            Thread updateStartTime = new Thread(() =>
-            {
-                this.Invoke((MethodInvoker)(() =>
-                {
-                    this.Text = GameId.ToString() + " : " + ((Dictionary<Object, Object>)
-                            SpectatorService.SpectatorDownloader.DownloadMetaData(Platform, GameId))["startTime"];
-                }));
-            });
-            updateStartTime.IsBackground = false;
-            updateStartTime.Start();
             for (int i = 0; i < 10; i++)
             {
                 PictureBox champIcon = new PictureBox();
@@ -180,9 +135,9 @@ namespace SpectatorClient
         {
             if (!PlayersUpdated)
             {
-                lock (chunkPackets)
+                lock (packets["KeyFrame"])
                 {
-                    foreach (Packet packet in chunkPackets.Where(packet => packet.header == (Byte)HeaderList.HeroSpawn))
+                    foreach (Packet packet in packets["KeyFrame"].Where(packet => packet.header == (Byte)HeaderList.HeroSpawn))
                     {
                         HeroSpawn hero = new HeroSpawn(packet);
                         players[(Int32)hero.PlayerNumber].player.Update(hero.NetId, hero.PlayerName, hero.ChampionName, hero.PlayerNumber);
@@ -198,15 +153,15 @@ namespace SpectatorClient
         }
         private void SetPositions(Single time)
         {
-            Int32 packetNum = chunkPackets.FindIndex(packet => packet.time > time) - 1;
+            Int32 packetNum = packets["Chunk"].FindIndex(packet => packet.time > time) - 1;
             if (packetNum < 1)
                 return;
             Dictionary<int, Vector> playerPositions = new Dictionary<int, Vector>();
             for (int i = packetNum; i > 0; i--)
             {
-                if (chunkPackets[i].header == (Byte)HeaderList.Waypoints)
+                if (packets["Chunk"][i].header == (Byte)HeaderList.Waypoints)
                 {
-                    Waypoints wp = new Waypoints(chunkPackets[i]);
+                    Waypoints wp = new Waypoints(packets["Chunk"][i]);
                     foreach (Unit unit in wp.units)
                     {
                         PlayerInfo playerInfo = players.Find(pInfo => pInfo.player.NetId == unit.netId);
@@ -230,19 +185,51 @@ namespace SpectatorClient
                 champIcons[pair.Key].Location = new Point(x, y);
             }
         }
-        private void UpdateItems(Single time)
+        private Single UpdateItemsFromKeyFrames(Single time)
         {
-            players.ForEach(playerInfo => playerInfo.player.Items.ForEach(item => item.ItemId = 0));
-            for (int i = 0; i < chunkPackets.Count; i++)
+            time = 60 * (Single)(Math.Ceiling(time / 60) + 1);
+            List<UInt32> netidsadded = new List<UInt32>();
+            Single updateTime = 0;
+            for (int i = packets["KeyFrame"].Count - 1; i > 0; i--)
             {
-                Packet packet = chunkPackets[i];
+                Packet packet = packets["KeyFrame"][i];
+                if (packet.time > time)
+                    continue;
+                if (packet.header == (Byte)HeaderList.ChangeTarget_InventoryUpdate)
+                {
+                    updateTime = packet.time;
+                    InventoryUpdate inventory = new InventoryUpdate(packet);
+                    PlayerInfo playerInfo = players.Find(pInfo => pInfo.player.NetId == inventory.NetId);
+                    if (playerInfo != null && !netidsadded.Contains(inventory.NetId) && inventory.IsInventory)
+                    {
+                        netidsadded.Add(inventory.NetId);
+                        inventory.Items.ForEach(item =>
+                        {
+                            if (item.SlotId < 7)
+                                playerInfo.player.Items[item.SlotId] = new Item(item);
+                        });
+                    }
+                }
+                if (netidsadded.Count() == 10)
+                    break;
+            }
+            return updateTime - 60;
+        }
+        private void UpdateItemsFromChunks(Single time)
+        {
+            int updateTime = (int)Math.Floor(UpdateItemsFromKeyFrames(time));
+            for (int i = 0; i < packets["Chunk"].Count; i++)
+            {
+                Packet packet = packets["Chunk"][i];
                 if (packet.time < 1)
+                    continue;
+                if (packet.time < updateTime)
                     continue;
                 if (packet.time > time)
                     break;
-                if (packet.header == (Byte)HeaderList.PurchaseItem)
+                if (packet.header == (Byte)HeaderList.BuyItem)
                 {
-                    PurchaseItem purchase = new PurchaseItem(packet);
+                    BuyItem purchase = new BuyItem(packet);
                     PlayerInfo playerInfo = players.Find(pInfo => pInfo.player.NetId == purchase.NetId);
                     if (playerInfo != null)
                         playerInfo.player.Items[purchase.SlotId] = new Item(purchase);
@@ -254,9 +241,8 @@ namespace SpectatorClient
                     if (playerInfo != null)
                     {
                         playerInfo.player.Items[(sell.Slot & 0x7F)].ItemId = 0;
-                        playerInfo.player.Items[(sell.Slot & 0x7F)].ItemCount = 0;
+                        playerInfo.player.Items[(sell.Slot & 0x7F)].Quantity = 0;
                     }
-
                 }
                 if (packet.header == (Byte)HeaderList.SwapItems)
                 {
@@ -283,24 +269,45 @@ namespace SpectatorClient
         }
         private void trackbarNoFocus1_Scroll(object sender, EventArgs e)
         {
-            lock (chunkPackets)
+            lock (packets["Chunk"])
             {
-                if (chunkPackets.Count > 0)
+                if (packets["Chunk"].Count > 0)
                 {
-                    Single beginTime = chunkPackets[0].time;
-                    trackbarNoFocus1.Minimum = (Int32)chunkPackets[0].time;
-                    trackbarNoFocus1.Maximum = (Int32)chunkPackets[chunkPackets.Count() - 1].time;
+                    trackbarNoFocus1.Minimum = (Int32)packets["Chunk"].First(packet => packet.time > 0).time;
+                    trackbarNoFocus1.Maximum = (Int32)packets["Chunk"][packets["Chunk"].Count() - 1].time;
                     label1.Text = trackbarNoFocus1.Minimum + " / " + trackbarNoFocus1.Value + " / " + trackbarNoFocus1.Maximum;
                     Thread ParsePackets = new Thread(() =>
                     {
                         trackbarNoFocus1.Invoke((MethodInvoker)(() =>
                         {
                             SetPositions(trackbarNoFocus1.Value);
-                            UpdateItems(trackbarNoFocus1.Value);
+                            UpdateItemsFromChunks(trackbarNoFocus1.Value);
                         }));
                     });
                     ParsePackets.IsBackground = true;
                     ParsePackets.Start();
+                }
+            }
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            lock (packets["KeyFrame"])
+            {
+                if (File.Exists("keyframedmp.txt"))
+                    File.Delete("keyframedmp.txt");
+                foreach (Packet packet in packets["KeyFrame"])
+                {
+                    File.AppendAllText("keyframedmp.txt", packet.header.ToString("X") + " (" + packet.param.ToString("X") + ", " + packet.time + ") : " + BitConverter.ToString(packet.content) + "\n");
+                }
+            }
+            lock (packets["Chunk"])
+            {
+                if (File.Exists("Chunkdmp.txt"))
+                    File.Delete("Chunkdmp.txt");
+                foreach (Packet packet in packets["Chunk"])
+                {
+                    File.AppendAllText("Chunkdmp.txt", packet.header.ToString("X") + " (" + packet.param.ToString("X") + ", " + packet.time + ") : " + BitConverter.ToString(packet.content) + "\n");
                 }
             }
         }

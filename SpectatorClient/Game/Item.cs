@@ -12,17 +12,22 @@ namespace SpectatorClient.Game
     public class Item
     {
         public UInt32 ItemId { get; set; }
-        public Byte ItemCount { get; set; }
+        public Byte Quantity { get; set; }
         public PictureBox ItemIcon = new PictureBox();
-        public Item(PurchaseItem item)
+        public Item(BuyItem item)
         {
             ItemId = item.ItemId;
-            ItemCount = item.ItemCount;
+            Quantity = item.Quantity;
+        }
+        public Item(InventoryUpdate.ItemPacket item)
+        {
+            ItemId = item.ItemId;
+            Quantity = item.Quantity;
         }
         public Item()
         {
             ItemId = 0;
-            ItemCount = 0;
+            Quantity = 0;
         }
     }
 }
